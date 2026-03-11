@@ -11,6 +11,7 @@ interface WeeklyPlannerProps {
   onDelete: (dayIndex: number, taskId: string) => void;
   onAdd: (dayIndex: number) => void;
   onMove: (dayIndex: number, from: number, to: number) => void;
+  onReschedule: (fromDay: number, taskId: string, toDay: number) => void;
 }
 
 const WeeklyPlanner = ({
@@ -20,6 +21,7 @@ const WeeklyPlanner = ({
   onDelete,
   onAdd,
   onMove,
+  onReschedule,
 }: WeeklyPlannerProps) => {
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
 
@@ -29,6 +31,8 @@ const WeeklyPlanner = ({
     0
   );
   const weekProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+  const dayNames = days.map((d) => d.name);
 
   return (
     <section className="py-16 px-4">
@@ -98,6 +102,8 @@ const WeeklyPlanner = ({
               onDelete={(taskId) => onDelete(i, taskId)}
               onAdd={() => onAdd(i)}
               onMove={(from, to) => onMove(i, from, to)}
+              onReschedule={(taskId, toDayIndex) => onReschedule(i, taskId, toDayIndex)}
+              dayNames={dayNames}
             />
           ))}
         </div>

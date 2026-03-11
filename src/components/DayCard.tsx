@@ -12,7 +12,9 @@ interface DayCardProps {
   onDelete: (taskId: string) => void;
   onAdd: () => void;
   onMove: (fromIndex: number, toIndex: number) => void;
+  onReschedule?: (taskId: string, toDayIndex: number) => void;
   filter: "all" | "pending" | "completed";
+  dayNames: string[];
 }
 
 const DayCard = ({
@@ -23,7 +25,9 @@ const DayCard = ({
   onDelete,
   onAdd,
   onMove,
+  onReschedule,
   filter,
+  dayNames,
 }: DayCardProps) => {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -97,8 +101,15 @@ const DayCard = ({
                 const realIndex = day.tasks.findIndex((t) => t.id === task.id);
                 if (realIndex < day.tasks.length - 1) onMove(realIndex, realIndex + 1);
               }}
+              onReschedule={
+                onReschedule
+                  ? (toDayIndex) => onReschedule(task.id, toDayIndex)
+                  : undefined
+              }
               isFirst={i === 0}
               isLast={i === filteredTasks.length - 1}
+              dayNames={dayNames}
+              currentDayIndex={dayIndex}
             />
           ))}
 
