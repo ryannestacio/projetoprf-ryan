@@ -130,6 +130,8 @@ const Index = () => {
               sessions={sessions}
               dailyPlannedOverride={getOverride}
               onDailyPlannedChange={setOverride}
+              weeklyPlannedOverride={weeklyPlannedOverride}
+              onWeeklyPlannedChange={setWeeklyPlannedOverride}
             />
           </div>
         </section>
