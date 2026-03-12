@@ -109,7 +109,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-5 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors text-sm"
               >
                 <Play className="w-4 h-4" />
-                {seconds > 0 ? "CONTINUAR" : "INICIAR"}
+                {displaySeconds > 0 ? "CONTINUAR" : "INICIAR"}
               </button>
             ) : (
               <button
