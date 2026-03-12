@@ -131,7 +131,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
 
             <button
               onClick={handleComplete}
-              disabled={seconds === 0}
+              disabled={displaySeconds === 0}
               className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-5 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform disabled:opacity-40 disabled:pointer-events-none text-sm shadow-gold"
             >
               <CheckCircle2 className="w-4 h-4" />
