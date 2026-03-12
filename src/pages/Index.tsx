@@ -18,6 +18,7 @@ import {
   useSubjectReviews,
   useStopwatch,
   useDailyPlannedOverride,
+  useWeeklyPlannedOverride,
 } from "@/lib/store";
 import { Crosshair } from "lucide-react";
 
@@ -44,6 +45,7 @@ const Index = () => {
   const { reviews, markReviewed, removeReview } = useSubjectReviews();
   const stopwatch = useStopwatch();
   const { setOverride, getOverride } = useDailyPlannedOverride();
+  const { weeklyPlannedOverride, setWeeklyPlannedOverride } = useWeeklyPlannedOverride();
 
   const [focusMode, setFocusMode] = useState(false);
 
@@ -128,6 +130,8 @@ const Index = () => {
               sessions={sessions}
               dailyPlannedOverride={getOverride}
               onDailyPlannedChange={setOverride}
+              weeklyPlannedOverride={weeklyPlannedOverride}
+              onWeeklyPlannedChange={setWeeklyPlannedOverride}
             />
           </div>
         </section>

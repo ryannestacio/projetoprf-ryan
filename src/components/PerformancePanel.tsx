@@ -9,15 +9,16 @@ interface PerformancePanelProps {
   sessions: StudySession[];
   dailyPlannedOverride: (dayIndex: number) => number | null;
   onDailyPlannedChange: (dayIndex: number, seconds: number) => void;
+  weeklyPlannedOverride: number | null;
+  onWeeklyPlannedChange: (seconds: number) => void;
 }
 
-const PerformancePanel = ({ days, sessions, dailyPlannedOverride, onDailyPlannedChange }: PerformancePanelProps) => {
+const PerformancePanel = ({ days, sessions, dailyPlannedOverride, onDailyPlannedChange, weeklyPlannedOverride, onWeeklyPlannedChange }: PerformancePanelProps) => {
   const today = new Date();
   const dayOfWeek = today.getDay();
   const dayMapping = [6, 0, 1, 2, 3, 4, 5];
   const todayIndex = dayMapping[dayOfWeek];
 
-  // Calculate planned from tasks or use override
   const calcPlanned = (dayIdx: number) => {
     const override = dailyPlannedOverride(dayIdx);
     if (override !== null) return override;
@@ -25,9 +26,9 @@ const PerformancePanel = ({ days, sessions, dailyPlannedOverride, onDailyPlanned
   };
 
   const totalPlannedToday = calcPlanned(todayIndex);
-  const totalPlannedWeek = days.reduce((sum, _, i) => sum + calcPlanned(i), 0);
+  const autoPlannedWeek = days.reduce((sum, _, i) => sum + calcPlanned(i), 0);
+  const totalPlannedWeek = weeklyPlannedOverride !== null ? weeklyPlannedOverride : autoPlannedWeek;
 
-  // Actual from sessions
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
@@ -43,37 +44,33 @@ const PerformancePanel = ({ days, sessions, dailyPlannedOverride, onDailyPlanned
   const todayPercent = totalPlannedToday > 0 ? Math.round((actualToday / totalPlannedToday) * 100) : 0;
   const weekPercent = totalPlannedWeek > 0 ? Math.round((actualWeek / totalPlannedWeek) * 100) : 0;
 
-  const [editingToday, setEditingToday] = useState(false);
-  const [todayInput, setTodayInput] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editInput, setEditInput] = useState("");
 
-  const handleSaveToday = () => {
-    const match = todayInput.match(/^(\d+)h\s*(\d+)?/i);
+  const parseInput = (input: string): number | null => {
+    const match = input.match(/^(\d+)h\s*(\d+)?/i);
     if (match) {
       const hours = parseInt(match[1]) || 0;
       const mins = parseInt(match[2] || "0");
-      onDailyPlannedChange(todayIndex, (hours * 60 + mins) * 60);
-    } else {
-      const hours = parseFloat(todayInput);
-      if (!isNaN(hours)) onDailyPlannedChange(todayIndex, hours * 3600);
+      return (hours * 60 + mins) * 60;
     }
-    setEditingToday(false);
+    const hours = parseFloat(input);
+    if (!isNaN(hours)) return hours * 3600;
+    return null;
+  };
+
+  const handleSave = (key: string) => {
+    const seconds = parseInput(editInput);
+    if (seconds !== null) {
+      if (key === "Hoje") onDailyPlannedChange(todayIndex, seconds);
+      else onWeeklyPlannedChange(seconds);
+    }
+    setEditing(null);
   };
 
   const items = [
-    {
-      label: "Hoje",
-      planned: totalPlannedToday,
-      actual: actualToday,
-      percent: todayPercent,
-      editable: true,
-    },
-    {
-      label: "Semana",
-      planned: totalPlannedWeek,
-      actual: actualWeek,
-      percent: weekPercent,
-      editable: false,
-    },
+    { label: "Hoje", planned: totalPlannedToday, actual: actualToday, percent: todayPercent },
+    { label: "Semana", planned: totalPlannedWeek, actual: actualWeek, percent: weekPercent },
   ];
 
   return (
@@ -124,31 +121,31 @@ const PerformancePanel = ({ days, sessions, dailyPlannedOverride, onDailyPlanned
               </span>
               <span className="text-xs text-muted-foreground font-body flex items-center gap-1">
                 Planejado: {formatHoursMinutes(item.planned)}
-                {item.editable && !editingToday && (
+                {editing !== item.label && (
                   <button
                     onClick={() => {
                       const h = Math.floor(item.planned / 3600);
                       const m = Math.floor((item.planned % 3600) / 60);
-                      setTodayInput(`${h}h${m.toString().padStart(2, "0")}`);
-                      setEditingToday(true);
+                      setEditInput(`${h}h${m.toString().padStart(2, "0")}`);
+                      setEditing(item.label);
                     }}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
                 )}
-                {item.editable && editingToday && (
+                {editing === item.label && (
                   <span className="flex items-center gap-1 ml-1">
                     <input
                       type="text"
-                      value={todayInput}
-                      onChange={(e) => setTodayInput(e.target.value)}
+                      value={editInput}
+                      onChange={(e) => setEditInput(e.target.value)}
                       className="w-16 bg-input border border-border rounded px-1 py-0.5 text-xs text-foreground font-body focus:ring-1 focus:ring-primary outline-none"
                       placeholder="4h30"
                       autoFocus
-                      onKeyDown={(e) => e.key === "Enter" && handleSaveToday()}
+                      onKeyDown={(e) => e.key === "Enter" && handleSave(item.label)}
                     />
-                    <button onClick={handleSaveToday} className="p-0.5 rounded bg-primary text-primary-foreground">
+                    <button onClick={() => handleSave(item.label)} className="p-0.5 rounded bg-primary text-primary-foreground">
                       <Check className="w-3 h-3" />
                     </button>
                   </span>

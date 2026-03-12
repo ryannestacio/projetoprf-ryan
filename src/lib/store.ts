@@ -388,6 +388,22 @@ export function useDailyPlannedOverride() {
   return { setOverride, getOverride };
 }
 
+export function useWeeklyPlannedOverride() {
+  const [override, setOverrideRaw] = useState<number | null>(() =>
+    loadFromStorage("prf-weekly-planned-override", null)
+  );
+
+  useEffect(() => {
+    saveToStorage("prf-weekly-planned-override", override);
+  }, [override]);
+
+  const setOverride = useCallback((seconds: number) => {
+    setOverrideRaw(seconds);
+  }, []);
+
+  return { weeklyPlannedOverride: override, setWeeklyPlannedOverride: setOverride };
+}
+
 export function useSubjectReviews() {
   const INITIAL_REVIEWS: SubjectReview[] = [
     { name: "Legislacao de Transito", lastReview: null, nextReview: null, level: 0 },
