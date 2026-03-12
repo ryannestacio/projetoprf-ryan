@@ -473,10 +473,30 @@ export function formatHoursMinutes(seconds: number): string {
 /** Parse time range like "19h00 - 21h00" to duration in seconds */
 export function parseTimeDuration(timeStr: string): number {
   if (!timeStr) return 0;
+
   const match = timeStr.match(/(\d{1,2})h(\d{2})\s*-\s*(\d{1,2})h(\d{2})/);
   if (!match) return 0;
-  const startMin = parseInt(match[1]) * 60 + parseInt(match[2]);
-  let endMin = parseInt(match[3]) * 60 + parseInt(match[4]);
+
+  const startHour = Number.parseInt(match[1], 10);
+  const startMinute = Number.parseInt(match[2], 10);
+  const endHour = Number.parseInt(match[3], 10);
+  const endMinute = Number.parseInt(match[4], 10);
+
+  const isValidTime =
+    startHour >= 0 &&
+    startHour <= 23 &&
+    endHour >= 0 &&
+    endHour <= 23 &&
+    startMinute >= 0 &&
+    startMinute <= 59 &&
+    endMinute >= 0 &&
+    endMinute <= 59;
+
+  if (!isValidTime) return 0;
+
+  const startMin = startHour * 60 + startMinute;
+  let endMin = endHour * 60 + endMinute;
   if (endMin <= startMin) endMin += 24 * 60; // crosses midnight
+
   return (endMin - startMin) * 60;
 }
