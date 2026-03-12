@@ -8,34 +8,57 @@ interface StopwatchProps {
 }
 
 const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
-  const [seconds, setSeconds] = useState(0);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Persist: accumulated seconds when paused, and startedAt timestamp when running
+  const [accumulated, setAccumulated] = useState<number>(() => {
+    try { return JSON.parse(localStorage.getItem("prf-sw-accumulated") || "0"); } catch { return 0; }
+  });
+  const [startedAt, setStartedAt] = useState<number | null>(() => {
+    try { return JSON.parse(localStorage.getItem("prf-sw-startedAt") || "null"); } catch { return null; }
+  });
 
+  const running = startedAt !== null;
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [displaySeconds, setDisplaySeconds] = useState(() => {
+    if (startedAt) return accumulated + Math.floor((Date.now() - startedAt) / 1000);
+    return accumulated;
+  });
+
+  // Persist to localStorage
+  useEffect(() => {
+    localStorage.setItem("prf-sw-accumulated", JSON.stringify(accumulated));
+  }, [accumulated]);
+  useEffect(() => {
+    localStorage.setItem("prf-sw-startedAt", JSON.stringify(startedAt));
+  }, [startedAt]);
+
+  // Tick
   useEffect(() => {
     if (running) {
-      intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
+      const tick = () => setDisplaySeconds(accumulated + Math.floor((Date.now() - startedAt!) / 1000));
+      tick();
+      intervalRef.current = setInterval(tick, 1000);
+    } else {
+      setDisplaySeconds(accumulated);
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [running]);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [running, accumulated, startedAt]);
 
-  const handleStart = useCallback(() => setRunning(true), []);
-  const handlePause = useCallback(() => setRunning(false), []);
+  const handleStart = useCallback(() => setStartedAt(Date.now()), []);
+  const handlePause = useCallback(() => {
+    if (startedAt) setAccumulated((a) => a + Math.floor((Date.now() - startedAt) / 1000));
+    setStartedAt(null);
+  }, [startedAt]);
   const handleReset = useCallback(() => {
-    setRunning(false);
-    setSeconds(0);
+    setStartedAt(null);
+    setAccumulated(0);
   }, []);
   const handleComplete = useCallback(() => {
-    if (seconds > 0) {
-      onSessionComplete(seconds);
-      setRunning(false);
-      setSeconds(0);
+    if (displaySeconds > 0) {
+      onSessionComplete(displaySeconds);
+      setStartedAt(null);
+      setAccumulated(0);
     }
-  }, [seconds, onSessionComplete]);
+  }, [displaySeconds, onSessionComplete]);
 
   return (
     <section id="cronometro" className="py-16 px-4">
@@ -74,7 +97,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
               <Clock className="w-28 h-28" />
             </div>
             <span className="font-display font-black text-4xl md:text-5xl text-foreground tabular-nums relative z-10">
-              {formatTime(seconds)}
+              {formatTime(displaySeconds)}
             </span>
           </div>
 
@@ -86,7 +109,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-5 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors text-sm"
               >
                 <Play className="w-4 h-4" />
-                {seconds > 0 ? "CONTINUAR" : "INICIAR"}
+                {displaySeconds > 0 ? "CONTINUAR" : "INICIAR"}
               </button>
             ) : (
               <button
@@ -108,7 +131,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
 
             <button
               onClick={handleComplete}
-              disabled={seconds === 0}
+              disabled={displaySeconds === 0}
               className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-5 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform disabled:opacity-40 disabled:pointer-events-none text-sm shadow-gold"
             >
               <CheckCircle2 className="w-4 h-4" />
