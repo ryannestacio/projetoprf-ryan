@@ -1,65 +1,17 @@
-import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Play, Pause, RotateCcw, CheckCircle2, Clock, Timer } from "lucide-react";
 import { formatTime } from "@/lib/store";
 
 interface StopwatchProps {
-  onSessionComplete: (seconds: number) => void;
+  displaySeconds: number;
+  running: boolean;
+  onStart: () => void;
+  onPause: () => void;
+  onReset: () => void;
+  onComplete: () => void;
 }
 
-const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
-  // Persist: accumulated seconds when paused, and startedAt timestamp when running
-  const [accumulated, setAccumulated] = useState<number>(() => {
-    try { return JSON.parse(localStorage.getItem("prf-sw-accumulated") || "0"); } catch { return 0; }
-  });
-  const [startedAt, setStartedAt] = useState<number | null>(() => {
-    try { return JSON.parse(localStorage.getItem("prf-sw-startedAt") || "null"); } catch { return null; }
-  });
-
-  const running = startedAt !== null;
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [displaySeconds, setDisplaySeconds] = useState(() => {
-    if (startedAt) return accumulated + Math.floor((Date.now() - startedAt) / 1000);
-    return accumulated;
-  });
-
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem("prf-sw-accumulated", JSON.stringify(accumulated));
-  }, [accumulated]);
-  useEffect(() => {
-    localStorage.setItem("prf-sw-startedAt", JSON.stringify(startedAt));
-  }, [startedAt]);
-
-  // Tick
-  useEffect(() => {
-    if (running) {
-      const tick = () => setDisplaySeconds(accumulated + Math.floor((Date.now() - startedAt!) / 1000));
-      tick();
-      intervalRef.current = setInterval(tick, 1000);
-    } else {
-      setDisplaySeconds(accumulated);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running, accumulated, startedAt]);
-
-  const handleStart = useCallback(() => setStartedAt(Date.now()), []);
-  const handlePause = useCallback(() => {
-    if (startedAt) setAccumulated((a) => a + Math.floor((Date.now() - startedAt) / 1000));
-    setStartedAt(null);
-  }, [startedAt]);
-  const handleReset = useCallback(() => {
-    setStartedAt(null);
-    setAccumulated(0);
-  }, []);
-  const handleComplete = useCallback(() => {
-    if (displaySeconds > 0) {
-      onSessionComplete(displaySeconds);
-      setStartedAt(null);
-      setAccumulated(0);
-    }
-  }, [displaySeconds, onSessionComplete]);
-
+const Stopwatch = ({ displaySeconds, running, onStart, onPause, onReset, onComplete }: StopwatchProps) => {
   return (
     <section id="cronometro" className="py-16 px-4">
       <motion.div
@@ -80,7 +32,6 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
         </div>
 
         <div className="bg-card rounded-3xl shadow-card p-8 flex flex-col items-center">
-          {/* Timer circle */}
           <div
             className={`relative w-52 h-52 md:w-64 md:h-64 rounded-full flex items-center justify-center mb-8 ring-2 ${
               running ? "ring-primary animate-pulse-gold" : "ring-border"
@@ -92,7 +43,6 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
               background: "hsl(220 25% 11%)",
             }}
           >
-            {/* Skull + hourglass watermark */}
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.06] pointer-events-none">
               <Clock className="w-28 h-28" />
             </div>
@@ -101,11 +51,10 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
             </span>
           </div>
 
-          {/* Controls */}
           <div className="flex flex-wrap items-center justify-center gap-3">
             {!running ? (
               <button
-                onClick={handleStart}
+                onClick={onStart}
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-5 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors text-sm"
               >
                 <Play className="w-4 h-4" />
@@ -113,7 +62,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
               </button>
             ) : (
               <button
-                onClick={handlePause}
+                onClick={onPause}
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-5 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors text-sm"
               >
                 <Pause className="w-4 h-4" />
@@ -122,7 +71,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
             )}
 
             <button
-              onClick={handleReset}
+              onClick={onReset}
               className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-5 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors text-sm"
             >
               <RotateCcw className="w-4 h-4" />
@@ -130,7 +79,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
             </button>
 
             <button
-              onClick={handleComplete}
+              onClick={onComplete}
               disabled={displaySeconds === 0}
               className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-5 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform disabled:opacity-40 disabled:pointer-events-none text-sm shadow-gold"
             >

@@ -1,4 +1,3 @@
-import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, RotateCcw, CheckCircle2, X, Clock, Crosshair } from "lucide-react";
 import { formatTime } from "@/lib/store";
@@ -7,33 +6,15 @@ interface FocusModeProps {
   open: boolean;
   onClose: () => void;
   currentTask: string;
-  onSessionComplete: (seconds: number) => void;
+  displaySeconds: number;
+  running: boolean;
+  onStart: () => void;
+  onPause: () => void;
+  onReset: () => void;
+  onComplete: () => void;
 }
 
-const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeProps) => {
-  const [seconds, setSeconds] = useState(0);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [running]);
-
-  const handleComplete = useCallback(() => {
-    if (seconds > 0) {
-      onSessionComplete(seconds);
-      setRunning(false);
-      setSeconds(0);
-    }
-  }, [seconds, onSessionComplete]);
-
+const FocusMode = ({ open, onClose, currentTask, displaySeconds, running, onStart, onPause, onReset, onComplete }: FocusModeProps) => {
   if (!open) return null;
 
   return (
@@ -44,7 +25,6 @@ const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeP
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
       >
-        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-6 right-6 p-3 rounded-xl bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -58,7 +38,6 @@ const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeP
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
         >
-          {/* Focus label */}
           <div className="flex items-center gap-2 text-primary">
             <Crosshair className="w-5 h-5" />
             <span className="font-display font-bold text-sm tracking-widest uppercase">
@@ -66,14 +45,12 @@ const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeP
             </span>
           </div>
 
-          {/* Current task */}
           {currentTask && (
             <p className="text-foreground font-body text-center text-lg max-w-md">
               {currentTask}
             </p>
           )}
 
-          {/* Timer */}
           <div
             className={`relative w-64 h-64 md:w-80 md:h-80 rounded-full flex items-center justify-center ring-2 ${
               running ? "ring-primary animate-pulse-gold" : "ring-border"
@@ -89,23 +66,22 @@ const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeP
               <Clock className="w-36 h-36" />
             </div>
             <span className="font-display font-black text-5xl md:text-6xl text-foreground tabular-nums relative z-10">
-              {formatTime(seconds)}
+              {formatTime(displaySeconds)}
             </span>
           </div>
 
-          {/* Controls */}
           <div className="flex flex-wrap items-center justify-center gap-3">
             {!running ? (
               <button
-                onClick={() => setRunning(true)}
+                onClick={onStart}
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-6 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors"
               >
                 <Play className="w-4 h-4" />
-                {seconds > 0 ? "CONTINUAR" : "INICIAR"}
+                {displaySeconds > 0 ? "CONTINUAR" : "INICIAR"}
               </button>
             ) : (
               <button
-                onClick={() => setRunning(false)}
+                onClick={onPause}
                 className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-6 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors"
               >
                 <Pause className="w-4 h-4" />
@@ -114,7 +90,7 @@ const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeP
             )}
 
             <button
-              onClick={() => { setRunning(false); setSeconds(0); }}
+              onClick={() => { onReset(); }}
               className="flex items-center gap-2 bg-secondary text-secondary-foreground font-display font-bold px-6 py-3 rounded-lg ring-1 ring-inset ring-border hover:bg-surface-elevated transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
@@ -122,8 +98,8 @@ const FocusMode = ({ open, onClose, currentTask, onSessionComplete }: FocusModeP
             </button>
 
             <button
-              onClick={handleComplete}
-              disabled={seconds === 0}
+              onClick={onComplete}
+              disabled={displaySeconds === 0}
               className="flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform disabled:opacity-40 disabled:pointer-events-none shadow-gold"
             >
               <CheckCircle2 className="w-4 h-4" />
