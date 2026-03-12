@@ -1,3 +1,4 @@
+import { useState } from "react";
 import HeroSection from "@/components/HeroSection";
 import Stopwatch from "@/components/Stopwatch";
 import WeeklyPlanner from "@/components/WeeklyPlanner";
@@ -5,17 +6,26 @@ import ThematicImage from "@/components/ThematicImage";
 import NotesSection from "@/components/NotesSection";
 import DashboardSection from "@/components/DashboardSection";
 import PrayerSection from "@/components/PrayerSection";
-import { useWeeklyData, useStudySessions } from "@/lib/store";
+import FocusMode from "@/components/FocusMode";
+import DailyObservations from "@/components/DailyObservations";
+import PerformancePanel from "@/components/PerformancePanel";
+import SubjectReviewSection from "@/components/SubjectReviewSection";
+import {
+  useWeeklyData,
+  useStudySessions,
+  useWeeklyGoal,
+  useDailyNotes,
+  useSubjectReviews,
+} from "@/lib/store";
+import { Crosshair } from "lucide-react";
 
 import prf1 from "@/assets/prf-1.jpeg";
-import prf2 from "@/assets/prf-2.jpeg";
 import prf3 from "@/assets/prf-3.png";
 import prf4 from "@/assets/prf-4.png";
 import prf5 from "@/assets/prf-5.png";
-import prf6 from "@/assets/prf-6.jpeg";
 
 const Index = () => {
-  const { days, toggleTask, updateTask, deleteTask, addTask, moveTask } =
+  const { days, toggleTask, updateTask, deleteTask, addTask, moveTask, rescheduleTask } =
     useWeeklyData();
   const {
     sessions,
@@ -27,50 +37,94 @@ const Index = () => {
     sessionCount,
     weekSessionCount,
   } = useStudySessions();
+  const { goalHours, setGoalHours } = useWeeklyGoal();
+  const { getNote, setNote } = useDailyNotes();
+  const { reviews, markReviewed } = useSubjectReviews();
+
+  const [focusMode, setFocusMode] = useState(false);
+
+  // Get current task (first incomplete task of today)
+  const todayDayIndex = [6, 0, 1, 2, 3, 4, 5][new Date().getDay()];
+  const currentTask =
+    days[todayDayIndex]?.tasks.find((t) => !t.completed)?.text || "";
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <HeroSection />
-      <Stopwatch onSessionComplete={addSession} />
-
-      <ThematicImage src={prf3} alt="PRF Operacao" />
-
-      <WeeklyPlanner
-        days={days}
-        onToggle={toggleTask}
-        onUpdate={updateTask}
-        onDelete={deleteTask}
-        onAdd={addTask}
-        onMove={moveTask}
+    <>
+      <FocusMode
+        open={focusMode}
+        onClose={() => setFocusMode(false)}
+        currentTask={currentTask}
+        onSessionComplete={(s) => {
+          addSession(s);
+          setFocusMode(false);
+        }}
       />
 
-      <ThematicImage src={prf1} alt="PRF Tatico" />
+      <main className="min-h-screen bg-background text-foreground">
+        {/* Focus mode FAB */}
+        <button
+          onClick={() => setFocusMode(true)}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-5 py-3 rounded-xl shadow-gold hover:scale-[1.05] active:scale-[0.97] transition-transform"
+        >
+          <Crosshair className="w-5 h-5" />
+          FOCO
+        </button>
 
-      <NotesSection />
+        <HeroSection />
+        <Stopwatch onSessionComplete={addSession} />
 
-      <ThematicImage src={prf4} alt="PRF COEsp" />
+        <ThematicImage src={prf3} alt="PRF Operacao" />
 
-      <DashboardSection
-        totalToday={totalToday}
-        totalWeek={totalWeek}
-        totalMonth={totalMonth}
-        avgDaily={avgDaily}
-        sessionCount={sessionCount}
-        weekSessionCount={weekSessionCount}
-        sessions={sessions}
-      />
+        <WeeklyPlanner
+          days={days}
+          onToggle={toggleTask}
+          onUpdate={updateTask}
+          onDelete={deleteTask}
+          onAdd={addTask}
+          onMove={moveTask}
+          onReschedule={rescheduleTask}
+        />
 
-      <ThematicImage src={prf5} alt="PRF Helicoptero" />
+        <ThematicImage src={prf1} alt="PRF Tatico" />
 
-      <PrayerSection />
+        <NotesSection />
 
-      {/* Footer */}
-      <footer className="py-8 px-4 text-center border-t border-border">
-        <p className="text-muted-foreground text-xs font-body">
-          Painel de Controle Tatico — Missao: Aprovacao PRF
-        </p>
-      </footer>
-    </main>
+        <ThematicImage src={prf4} alt="PRF COEsp" />
+
+        {/* Observations + Performance */}
+        <section className="py-16 px-4">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+            <DailyObservations getNote={getNote} setNote={setNote} />
+            <PerformancePanel days={days} sessions={sessions} />
+          </div>
+        </section>
+
+        <DashboardSection
+          totalToday={totalToday}
+          totalWeek={totalWeek}
+          totalMonth={totalMonth}
+          avgDaily={avgDaily}
+          sessionCount={sessionCount}
+          weekSessionCount={weekSessionCount}
+          sessions={sessions}
+          weeklyGoalHours={goalHours}
+          onGoalChange={setGoalHours}
+        />
+
+        <ThematicImage src={prf5} alt="PRF Helicoptero" />
+
+        <SubjectReviewSection reviews={reviews} onMarkReviewed={markReviewed} />
+
+        <PrayerSection />
+
+        {/* Footer */}
+        <footer className="py-8 px-4 text-center border-t border-border">
+          <p className="text-muted-foreground text-xs font-body">
+            Painel de Controle Tatico — Missao: Aprovacao PRF
+          </p>
+        </footer>
+      </main>
+    </>
   );
 };
 

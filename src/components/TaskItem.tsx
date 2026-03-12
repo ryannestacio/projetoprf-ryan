@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Trash2, GripVertical, Pencil, Check, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Trash2, GripVertical, Pencil, Check, X, ArrowRightLeft } from "lucide-react";
 import type { Task } from "@/lib/store";
 
 interface TaskItemProps {
@@ -10,8 +10,11 @@ interface TaskItemProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onReschedule?: (toDayIndex: number) => void;
   isFirst: boolean;
   isLast: boolean;
+  dayNames?: string[];
+  currentDayIndex?: number;
 }
 
 const TaskItem = ({
@@ -21,12 +24,16 @@ const TaskItem = ({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onReschedule,
   isFirst,
   isLast,
+  dayNames = [],
+  currentDayIndex = 0,
 }: TaskItemProps) => {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
   const [editTime, setEditTime] = useState(task.time);
+  const [showReschedule, setShowReschedule] = useState(false);
 
   const handleSave = () => {
     onUpdate(editText, editTime);
@@ -76,7 +83,7 @@ const TaskItem = ({
 
   return (
     <motion.div
-      className="group flex items-center gap-2 p-2 rounded-lg hover:bg-surface-elevated transition-colors"
+      className="group flex items-center gap-2 p-2 rounded-lg hover:bg-surface-elevated transition-colors relative"
       layout
       transition={{ type: "spring", duration: 0.3, bounce: 0 }}
     >
@@ -133,6 +140,15 @@ const TaskItem = ({
 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onReschedule && !task.completed && (
+          <button
+            onClick={() => setShowReschedule(!showReschedule)}
+            className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
+            title="Repor tarefa"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+          </button>
+        )}
         <button
           onClick={() => setEditing(true)}
           className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -146,6 +162,37 @@ const TaskItem = ({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Reschedule dropdown */}
+      <AnimatePresence>
+        {showReschedule && onReschedule && (
+          <motion.div
+            className="absolute right-0 top-full z-20 bg-card border border-border rounded-xl shadow-elevated p-2 min-w-[160px]"
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+          >
+            <p className="text-xs text-muted-foreground font-body px-2 py-1 mb-1">
+              Mover para:
+            </p>
+            {dayNames.map((name, i) => {
+              if (i === currentDayIndex) return null;
+              return (
+                <button
+                  key={name}
+                  onClick={() => {
+                    onReschedule(i);
+                    setShowReschedule(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-sm font-body text-foreground hover:bg-surface-elevated rounded-md transition-colors"
+                >
+                  {name}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

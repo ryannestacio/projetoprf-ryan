@@ -18,6 +18,13 @@ export interface StudySession {
   createdAt: string;
 }
 
+export interface SubjectReview {
+  name: string;
+  lastReview: string | null;
+  nextReview: string | null;
+  level: number; // 0-5
+}
+
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 const INITIAL_DAYS: DayData[] = [
@@ -201,7 +208,29 @@ export function useWeeklyData() {
     []
   );
 
-  return { days, toggleTask, updateTask, deleteTask, addTask, moveTask };
+  const rescheduleTask = useCallback(
+    (fromDayIndex: number, taskId: string, toDayIndex: number) => {
+      setDays((prev) => {
+        const task = prev[fromDayIndex]?.tasks.find((t) => t.id === taskId);
+        if (!task) return prev;
+        return prev.map((day, i) => {
+          if (i === fromDayIndex) {
+            return { ...day, tasks: day.tasks.filter((t) => t.id !== taskId) };
+          }
+          if (i === toDayIndex) {
+            return {
+              ...day,
+              tasks: [...day.tasks, { ...task, completed: false, id: generateId() }],
+            };
+          }
+          return day;
+        });
+      });
+    },
+    []
+  );
+
+  return { days, toggleTask, updateTask, deleteTask, addTask, moveTask, rescheduleTask };
 }
 
 export function useStudySessions() {
@@ -259,6 +288,87 @@ export function useStudySessions() {
   };
 }
 
+export function useWeeklyGoal() {
+  const [goalHours, setGoalHours] = useState<number>(() =>
+    loadFromStorage("prf-weekly-goal", 40)
+  );
+
+  useEffect(() => {
+    saveToStorage("prf-weekly-goal", goalHours);
+  }, [goalHours]);
+
+  return { goalHours, setGoalHours };
+}
+
+export function useDailyNotes() {
+  const [notes, setNotes] = useState<Record<string, string>>(() =>
+    loadFromStorage("prf-daily-notes", {})
+  );
+
+  useEffect(() => {
+    saveToStorage("prf-daily-notes", notes);
+  }, [notes]);
+
+  const setNote = useCallback((date: string, text: string) => {
+    setNotes((prev) => ({ ...prev, [date]: text }));
+  }, []);
+
+  const getNote = useCallback(
+    (date: string) => notes[date] || "",
+    [notes]
+  );
+
+  return { notes, setNote, getNote };
+}
+
+export function useSubjectReviews() {
+  const INITIAL_REVIEWS: SubjectReview[] = [
+    { name: "Legislacao de Transito", lastReview: null, nextReview: null, level: 0 },
+    { name: "Lingua Portuguesa", lastReview: null, nextReview: null, level: 0 },
+    { name: "Raciocinio Logico-Matematico", lastReview: null, nextReview: null, level: 0 },
+    { name: "Informatica", lastReview: null, nextReview: null, level: 0 },
+    { name: "Fisica", lastReview: null, nextReview: null, level: 0 },
+    { name: "Direito Administrativo", lastReview: null, nextReview: null, level: 0 },
+    { name: "Direito Constitucional", lastReview: null, nextReview: null, level: 0 },
+    { name: "Direito Penal", lastReview: null, nextReview: null, level: 0 },
+    { name: "Direito Processual Penal", lastReview: null, nextReview: null, level: 0 },
+    { name: "Direitos Humanos", lastReview: null, nextReview: null, level: 0 },
+    { name: "Legislacao Especial", lastReview: null, nextReview: null, level: 0 },
+    { name: "Etica", lastReview: null, nextReview: null, level: 0 },
+    { name: "Geopolitica", lastReview: null, nextReview: null, level: 0 },
+    { name: "Ingles", lastReview: null, nextReview: null, level: 0 },
+  ];
+
+  const [reviews, setReviews] = useState<SubjectReview[]>(() =>
+    loadFromStorage("prf-subject-reviews", INITIAL_REVIEWS)
+  );
+
+  useEffect(() => {
+    saveToStorage("prf-subject-reviews", reviews);
+  }, [reviews]);
+
+  const INTERVALS = [1, 3, 7, 14, 30, 60]; // days
+
+  const markReviewed = useCallback((name: string) => {
+    setReviews((prev) =>
+      prev.map((r) => {
+        if (r.name !== name) return r;
+        const newLevel = Math.min(r.level + 1, INTERVALS.length - 1);
+        const next = new Date();
+        next.setDate(next.getDate() + INTERVALS[newLevel]);
+        return {
+          ...r,
+          lastReview: new Date().toISOString(),
+          nextReview: next.toISOString(),
+          level: newLevel,
+        };
+      })
+    );
+  }, []);
+
+  return { reviews, markReviewed };
+}
+
 export function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -271,4 +381,15 @@ export function formatHoursMinutes(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}h ${m}min`;
   return `${m}min`;
+}
+
+/** Parse time range like "19h00 - 21h00" to duration in seconds */
+export function parseTimeDuration(timeStr: string): number {
+  if (!timeStr) return 0;
+  const match = timeStr.match(/(\d{1,2})h(\d{2})\s*-\s*(\d{1,2})h(\d{2})/);
+  if (!match) return 0;
+  const startMin = parseInt(match[1]) * 60 + parseInt(match[2]);
+  let endMin = parseInt(match[3]) * 60 + parseInt(match[4]);
+  if (endMin <= startMin) endMin += 24 * 60; // crosses midnight
+  return (endMin - startMin) * 60;
 }
