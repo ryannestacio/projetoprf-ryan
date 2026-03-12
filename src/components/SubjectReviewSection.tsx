@@ -1,13 +1,14 @@
 import { motion } from "framer-motion";
-import { RotateCw, CheckCircle2, AlertCircle } from "lucide-react";
+import { RotateCw, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import type { SubjectReview } from "@/lib/store";
 
 interface SubjectReviewSectionProps {
   reviews: SubjectReview[];
   onMarkReviewed: (name: string) => void;
+  onRemoveReview: (name: string) => void;
 }
 
-const SubjectReviewSection = ({ reviews, onMarkReviewed }: SubjectReviewSectionProps) => {
+const SubjectReviewSection = ({ reviews, onMarkReviewed, onRemoveReview }: SubjectReviewSectionProps) => {
   const today = new Date();
 
   const getStatus = (r: SubjectReview) => {
@@ -88,16 +89,25 @@ const SubjectReviewSection = ({ reviews, onMarkReviewed }: SubjectReviewSectionP
                   )}
                 </div>
 
-                <button
-                  onClick={() => onMarkReviewed(review.name)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-lg font-display font-bold text-xs transition-colors ${
-                    status === "due" || status === "pending"
-                      ? "bg-primary text-primary-foreground hover:scale-[1.03] active:scale-[0.98]"
-                      : "bg-secondary text-secondary-foreground hover:bg-surface-elevated"
-                  }`}
-                >
-                  Revisar
-                </button>
+                <div className="flex flex-col gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => onMarkReviewed(review.name)}
+                    className={`px-3 py-2 rounded-lg font-display font-bold text-xs transition-colors ${
+                      status === "due" || status === "pending"
+                        ? "bg-primary text-primary-foreground hover:scale-[1.03] active:scale-[0.98]"
+                        : "bg-secondary text-secondary-foreground hover:bg-surface-elevated"
+                    }`}
+                  >
+                    Revisar
+                  </button>
+                  <button
+                    onClick={() => onRemoveReview(review.name)}
+                    className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors flex items-center gap-1 justify-center"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remover
+                  </button>
+                </div>
               </motion.div>
             );
           })}

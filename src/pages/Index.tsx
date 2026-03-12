@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import HeroSection from "@/components/HeroSection";
 import Stopwatch from "@/components/Stopwatch";
 import WeeklyPlanner from "@/components/WeeklyPlanner";
@@ -16,6 +16,8 @@ import {
   useWeeklyGoal,
   useDailyNotes,
   useSubjectReviews,
+  useStopwatch,
+  useDailyPlannedOverride,
 } from "@/lib/store";
 import { Crosshair } from "lucide-react";
 
@@ -39,7 +41,9 @@ const Index = () => {
   } = useStudySessions();
   const { goalHours, setGoalHours } = useWeeklyGoal();
   const { getNote, setNote } = useDailyNotes();
-  const { reviews, markReviewed } = useSubjectReviews();
+  const { reviews, markReviewed, removeReview } = useSubjectReviews();
+  const stopwatch = useStopwatch();
+  const { setOverride, getOverride } = useDailyPlannedOverride();
 
   const [focusMode, setFocusMode] = useState(false);
 
@@ -48,16 +52,33 @@ const Index = () => {
   const currentTask =
     days[todayDayIndex]?.tasks.find((t) => !t.completed)?.text || "";
 
+  const handleComplete = useCallback(() => {
+    if (stopwatch.displaySeconds > 0) {
+      addSession(stopwatch.displaySeconds);
+      stopwatch.reset();
+    }
+  }, [stopwatch.displaySeconds, addSession, stopwatch.reset]);
+
+  const handleCompleteFocus = useCallback(() => {
+    if (stopwatch.displaySeconds > 0) {
+      addSession(stopwatch.displaySeconds);
+      stopwatch.reset();
+      setFocusMode(false);
+    }
+  }, [stopwatch.displaySeconds, addSession, stopwatch.reset]);
+
   return (
     <>
       <FocusMode
         open={focusMode}
         onClose={() => setFocusMode(false)}
         currentTask={currentTask}
-        onSessionComplete={(s) => {
-          addSession(s);
-          setFocusMode(false);
-        }}
+        displaySeconds={stopwatch.displaySeconds}
+        running={stopwatch.running}
+        onStart={stopwatch.start}
+        onPause={stopwatch.pause}
+        onReset={stopwatch.reset}
+        onComplete={handleCompleteFocus}
       />
 
       <main className="min-h-screen bg-background text-foreground">
@@ -71,7 +92,14 @@ const Index = () => {
         </button>
 
         <HeroSection />
-        <Stopwatch onSessionComplete={addSession} />
+        <Stopwatch
+          displaySeconds={stopwatch.displaySeconds}
+          running={stopwatch.running}
+          onStart={stopwatch.start}
+          onPause={stopwatch.pause}
+          onReset={stopwatch.reset}
+          onComplete={handleComplete}
+        />
 
         <ThematicImage src={prf3} alt="PRF Operacao" />
 
@@ -95,7 +123,12 @@ const Index = () => {
         <section className="py-16 px-4">
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
             <DailyObservations getNote={getNote} setNote={setNote} />
-            <PerformancePanel days={days} sessions={sessions} />
+            <PerformancePanel
+              days={days}
+              sessions={sessions}
+              dailyPlannedOverride={getOverride}
+              onDailyPlannedChange={setOverride}
+            />
           </div>
         </section>
 
@@ -113,7 +146,7 @@ const Index = () => {
 
         <ThematicImage src={prf5} alt="PRF Helicoptero" />
 
-        <SubjectReviewSection reviews={reviews} onMarkReviewed={markReviewed} />
+        <SubjectReviewSection reviews={reviews} onMarkReviewed={markReviewed} onRemoveReview={removeReview} />
 
         <PrayerSection />
 

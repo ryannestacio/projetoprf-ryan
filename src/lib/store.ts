@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 export interface Task {
   id: string;
@@ -321,6 +321,73 @@ export function useDailyNotes() {
   return { notes, setNote, getNote };
 }
 
+export function useStopwatch() {
+  const [accumulated, setAccumulated] = useState<number>(() => {
+    try { return JSON.parse(localStorage.getItem("prf-sw-accumulated") || "0"); } catch { return 0; }
+  });
+  const [startedAt, setStartedAt] = useState<number | null>(() => {
+    try { return JSON.parse(localStorage.getItem("prf-sw-startedAt") || "null"); } catch { return null; }
+  });
+
+  const running = startedAt !== null;
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [displaySeconds, setDisplaySeconds] = useState(() => {
+    if (startedAt) return accumulated + Math.floor((Date.now() - startedAt) / 1000);
+    return accumulated;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("prf-sw-accumulated", JSON.stringify(accumulated));
+  }, [accumulated]);
+  useEffect(() => {
+    localStorage.setItem("prf-sw-startedAt", JSON.stringify(startedAt));
+  }, [startedAt]);
+
+  useEffect(() => {
+    if (running) {
+      const tick = () => setDisplaySeconds(accumulated + Math.floor((Date.now() - startedAt!) / 1000));
+      tick();
+      intervalRef.current = setInterval(tick, 1000);
+    } else {
+      setDisplaySeconds(accumulated);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [running, accumulated, startedAt]);
+
+  const start = useCallback(() => setStartedAt(Date.now()), []);
+  const pause = useCallback(() => {
+    if (startedAt) setAccumulated((a) => a + Math.floor((Date.now() - startedAt) / 1000));
+    setStartedAt(null);
+  }, [startedAt]);
+  const reset = useCallback(() => {
+    setStartedAt(null);
+    setAccumulated(0);
+  }, []);
+
+  return { displaySeconds, running, start, pause, reset };
+}
+
+export function useDailyPlannedOverride() {
+  const [overrides, setOverrides] = useState<Record<string, number>>(() =>
+    loadFromStorage("prf-daily-planned-override", {})
+  );
+
+  useEffect(() => {
+    saveToStorage("prf-daily-planned-override", overrides);
+  }, [overrides]);
+
+  const setOverride = useCallback((dayIndex: number, seconds: number) => {
+    setOverrides((prev) => ({ ...prev, [dayIndex.toString()]: seconds }));
+  }, []);
+
+  const getOverride = useCallback(
+    (dayIndex: number) => overrides[dayIndex.toString()] ?? null,
+    [overrides]
+  );
+
+  return { setOverride, getOverride };
+}
+
 export function useSubjectReviews() {
   const INITIAL_REVIEWS: SubjectReview[] = [
     { name: "Legislacao de Transito", lastReview: null, nextReview: null, level: 0 },
@@ -347,7 +414,7 @@ export function useSubjectReviews() {
     saveToStorage("prf-subject-reviews", reviews);
   }, [reviews]);
 
-  const INTERVALS = [1, 3, 7, 14, 30, 60]; // days
+  const INTERVALS = [1, 3, 7, 14, 30, 60];
 
   const markReviewed = useCallback((name: string) => {
     setReviews((prev) =>
@@ -366,7 +433,11 @@ export function useSubjectReviews() {
     );
   }, []);
 
-  return { reviews, markReviewed };
+  const removeReview = useCallback((name: string) => {
+    setReviews((prev) => prev.filter((r) => r.name !== name));
+  }, []);
+
+  return { reviews, markReviewed, removeReview };
 }
 
 export function formatTime(seconds: number): string {

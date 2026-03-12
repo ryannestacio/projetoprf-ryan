@@ -2,29 +2,24 @@ import { motion } from "framer-motion";
 import { BookOpen } from "lucide-react";
 import santoTomas from "@/assets/santo-tomas.jpeg";
 
-const PRAYER_TEXT = `Criador inefavel, que dos tesouros de Vossa sabedoria
-designastes tres hierarquias de Anjos e as colocastes numa ordem admiravel
-acima dos ceus e dispusestes com tanta beleza as partes do universo:
+const PRAYER_TEXT = `Infalível Criador, que, dos tesouros da Vossa sabedoria, tirastes as hierarquias dos anjos, colocando-as com ordem admirável no céu;
 
-Vos que sois chamado a verdadeira fonte de luz e de sabedoria
-e o principio supereminente, dignai-Vos derramar sobre as trevas
-da minha inteligencia um raio da Vossa claridade,
-afastando de mim as duplas trevas em que nasci: o pecado e a ignorancia.
+Vós, que distribuístes o universo com encantadora harmonia; Vós, que sois a verdadeira fonte da luz e o princípio supremo da sabedoria,
 
-Vos, que fazeis eloqeente a lingua das criancas,
-instruí a minha lingua e derramai nos meus labios a graca de Vossa bencao.
+Difundi sobre as trevas da minha mente o raio do esplendor, removendo as duplas trevas nas quais nasci: o pecado e a ignorância.
 
-Dai-me agudeza para entender, capacidade para reter,
-metodo e facilidade para aprender,
-subtileza para interpretar e graca abundante para falar.
+Vós, que tornastes fecunda a língua das crianças, tornai erudita a minha língua e espalhai sobre os meus lábios a vossa bênção.
 
-Dai-me Vos o inicio, dirigi o meu progresso
-e coroai o meu fim.
+Concedei-me a agudeza de entender,
+a capacidade de reter,
+a sutileza de relevar,
+a facilidade de aprender,
+a graça abundante de falar e de escrever.
 
-Por Nosso Senhor Jesus Cristo, Vosso Filho,
-que convosco vive e reina, na unidade do Espirito Santo.
+Ensinai-me a começar, regei-me no continuar e no perseverar até o término.
 
-Amem.`;
+Vós, que sois verdadeiro Deus e verdadeiro homem,
+que viveis e reinais pelos séculos dos séculos. Amém!`;
 
 const PrayerSection = () => {
   return (
