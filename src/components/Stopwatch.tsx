@@ -43,19 +43,22 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [running, accumulated, startedAt]);
 
-  const handleStart = useCallback(() => setRunning(true), []);
-  const handlePause = useCallback(() => setRunning(false), []);
+  const handleStart = useCallback(() => setStartedAt(Date.now()), []);
+  const handlePause = useCallback(() => {
+    if (startedAt) setAccumulated((a) => a + Math.floor((Date.now() - startedAt) / 1000));
+    setStartedAt(null);
+  }, [startedAt]);
   const handleReset = useCallback(() => {
-    setRunning(false);
-    setSeconds(0);
+    setStartedAt(null);
+    setAccumulated(0);
   }, []);
   const handleComplete = useCallback(() => {
-    if (seconds > 0) {
-      onSessionComplete(seconds);
-      setRunning(false);
-      setSeconds(0);
+    if (displaySeconds > 0) {
+      onSessionComplete(displaySeconds);
+      setStartedAt(null);
+      setAccumulated(0);
     }
-  }, [seconds, onSessionComplete]);
+  }, [displaySeconds, onSessionComplete]);
 
   return (
     <section id="cronometro" className="py-16 px-4">
