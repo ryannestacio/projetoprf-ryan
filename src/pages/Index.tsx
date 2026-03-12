@@ -18,6 +18,7 @@ import {
   useSubjectReviews,
   useStopwatch,
   useDailyPlannedOverride,
+  useWeeklyPlannedOverride,
 } from "@/lib/store";
 import { Crosshair } from "lucide-react";
 
