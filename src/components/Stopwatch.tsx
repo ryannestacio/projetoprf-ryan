@@ -97,7 +97,7 @@ const Stopwatch = ({ onSessionComplete }: StopwatchProps) => {
               <Clock className="w-28 h-28" />
             </div>
             <span className="font-display font-black text-4xl md:text-5xl text-foreground tabular-nums relative z-10">
-              {formatTime(seconds)}
+              {formatTime(displaySeconds)}
             </span>
           </div>
 
