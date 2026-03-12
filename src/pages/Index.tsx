@@ -45,6 +45,7 @@ const Index = () => {
   const { reviews, markReviewed, removeReview } = useSubjectReviews();
   const stopwatch = useStopwatch();
   const { setOverride, getOverride } = useDailyPlannedOverride();
+  const { weeklyPlannedOverride, setWeeklyPlannedOverride } = useWeeklyPlannedOverride();
 
   const [focusMode, setFocusMode] = useState(false);
 
