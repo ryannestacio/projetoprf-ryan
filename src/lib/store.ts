@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+import { loadCloudValue, saveCloudValue } from "@/lib/cloudSync";
+
 export interface Task {
   id: string;
   text: string;
@@ -23,6 +25,11 @@ export interface SubjectReview {
   lastReview: string | null;
   nextReview: string | null;
   level: number; // 0-5
+}
+
+export interface SubjectNoteMeta {
+  name: string;
+  questions: number;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -125,14 +132,45 @@ function saveToStorage<T>(key: string, data: T) {
   } catch {}
 }
 
+function useCloudHydration<T>(key: string, setState: (value: T) => void) {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const hydrate = async () => {
+      const cloudValue = await loadCloudValue<T>(key);
+      if (mounted && cloudValue !== null) {
+        setState(cloudValue);
+      }
+      if (mounted) {
+        setHydrated(true);
+      }
+    };
+
+    void hydrate();
+
+    return () => {
+      mounted = false;
+    };
+  }, [key, setState]);
+
+  return hydrated;
+}
+
 export function useWeeklyData() {
   const [days, setDays] = useState<DayData[]>(() =>
     loadFromStorage("prf-weekly-data", INITIAL_DAYS)
   );
 
+  const cloudHydrated = useCloudHydration<DayData[]>("prf-weekly-data", setDays);
+
   useEffect(() => {
     saveToStorage("prf-weekly-data", days);
-  }, [days]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-weekly-data", days);
+    }
+  }, [cloudHydrated, days]);
 
   const toggleTask = useCallback((dayIndex: number, taskId: string) => {
     setDays((prev) =>
@@ -238,9 +276,14 @@ export function useStudySessions() {
     loadFromStorage("prf-study-sessions", [])
   );
 
+  const cloudHydrated = useCloudHydration<StudySession[]>("prf-study-sessions", setSessions);
+
   useEffect(() => {
     saveToStorage("prf-study-sessions", sessions);
-  }, [sessions]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-study-sessions", sessions);
+    }
+  }, [cloudHydrated, sessions]);
 
   const addSession = useCallback((durationSeconds: number) => {
     setSessions((prev) => [
@@ -293,9 +336,14 @@ export function useWeeklyGoal() {
     loadFromStorage("prf-weekly-goal", 40)
   );
 
+  const cloudHydrated = useCloudHydration<number>("prf-weekly-goal", setGoalHours);
+
   useEffect(() => {
     saveToStorage("prf-weekly-goal", goalHours);
-  }, [goalHours]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-weekly-goal", goalHours);
+    }
+  }, [cloudHydrated, goalHours]);
 
   return { goalHours, setGoalHours };
 }
@@ -305,9 +353,14 @@ export function useDailyNotes() {
     loadFromStorage("prf-daily-notes", {})
   );
 
+  const cloudHydrated = useCloudHydration<Record<string, string>>("prf-daily-notes", setNotes);
+
   useEffect(() => {
     saveToStorage("prf-daily-notes", notes);
-  }, [notes]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-daily-notes", notes);
+    }
+  }, [cloudHydrated, notes]);
 
   const setNote = useCallback((date: string, text: string) => {
     setNotes((prev) => ({ ...prev, [date]: text }));
@@ -336,12 +389,21 @@ export function useStopwatch() {
     return accumulated;
   });
 
+  const accumulatedHydrated = useCloudHydration<number>("prf-sw-accumulated", setAccumulated);
+  const startedAtHydrated = useCloudHydration<number | null>("prf-sw-startedAt", setStartedAt);
+
   useEffect(() => {
     localStorage.setItem("prf-sw-accumulated", JSON.stringify(accumulated));
-  }, [accumulated]);
+    if (accumulatedHydrated) {
+      void saveCloudValue("prf-sw-accumulated", accumulated);
+    }
+  }, [accumulated, accumulatedHydrated]);
   useEffect(() => {
     localStorage.setItem("prf-sw-startedAt", JSON.stringify(startedAt));
-  }, [startedAt]);
+    if (startedAtHydrated) {
+      void saveCloudValue("prf-sw-startedAt", startedAt);
+    }
+  }, [startedAt, startedAtHydrated]);
 
   useEffect(() => {
     if (running) {
@@ -372,9 +434,14 @@ export function useDailyPlannedOverride() {
     loadFromStorage("prf-daily-planned-override", {})
   );
 
+  const cloudHydrated = useCloudHydration<Record<string, number>>("prf-daily-planned-override", setOverrides);
+
   useEffect(() => {
     saveToStorage("prf-daily-planned-override", overrides);
-  }, [overrides]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-daily-planned-override", overrides);
+    }
+  }, [cloudHydrated, overrides]);
 
   const setOverride = useCallback((dayIndex: number, seconds: number) => {
     setOverrides((prev) => ({ ...prev, [dayIndex.toString()]: seconds }));
@@ -393,9 +460,14 @@ export function useWeeklyPlannedOverride() {
     loadFromStorage("prf-weekly-planned-override", null)
   );
 
+  const cloudHydrated = useCloudHydration<number | null>("prf-weekly-planned-override", setOverrideRaw);
+
   useEffect(() => {
     saveToStorage("prf-weekly-planned-override", override);
-  }, [override]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-weekly-planned-override", override);
+    }
+  }, [cloudHydrated, override]);
 
   const setOverride = useCallback((seconds: number) => {
     setOverrideRaw(seconds);
@@ -426,9 +498,14 @@ export function useSubjectReviews() {
     loadFromStorage("prf-subject-reviews", INITIAL_REVIEWS)
   );
 
+  const cloudHydrated = useCloudHydration<SubjectReview[]>("prf-subject-reviews", setReviews);
+
   useEffect(() => {
     saveToStorage("prf-subject-reviews", reviews);
-  }, [reviews]);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-subject-reviews", reviews);
+    }
+  }, [cloudHydrated, reviews]);
 
   const INTERVALS = [1, 3, 7, 14, 30, 60];
 
@@ -454,6 +531,58 @@ export function useSubjectReviews() {
   }, []);
 
   return { reviews, markReviewed, removeReview };
+}
+
+const INITIAL_SUBJECT_NOTES: SubjectNoteMeta[] = [
+  { name: "Legislacao de Transito", questions: 30 },
+  { name: "Lingua Portuguesa", questions: 20 },
+  { name: "Raciocinio Logico-Matematico", questions: 8 },
+  { name: "Informatica", questions: 7 },
+  { name: "Fisica", questions: 6 },
+  { name: "Direito Administrativo", questions: 5 },
+  { name: "Direito Constitucional", questions: 5 },
+  { name: "Direito Penal", questions: 6 },
+  { name: "Direito Processual Penal", questions: 4 },
+  { name: "Direitos Humanos", questions: 5 },
+  { name: "Legislacao Especial", questions: 2 },
+  { name: "Etica", questions: 4 },
+  { name: "Geopolitica", questions: 5 },
+  { name: "Ingles", questions: 8 },
+  { name: "Redacao", questions: 0 },
+];
+
+const INITIAL_SUBJECT_NOTES_STATE = INITIAL_SUBJECT_NOTES.reduce<Record<string, string>>(
+  (acc, subject) => {
+    acc[subject.name] = "";
+    return acc;
+  },
+  {}
+);
+
+export function useSubjectNotes() {
+  const [notes, setNotes] = useState<Record<string, string>>(() =>
+    loadFromStorage("prf-subject-notes", INITIAL_SUBJECT_NOTES_STATE)
+  );
+
+  const cloudHydrated = useCloudHydration<Record<string, string>>("prf-subject-notes", setNotes);
+
+  useEffect(() => {
+    saveToStorage("prf-subject-notes", notes);
+    if (cloudHydrated) {
+      void saveCloudValue("prf-subject-notes", notes);
+    }
+  }, [cloudHydrated, notes]);
+
+  const setSubjectNote = useCallback((subject: string, text: string) => {
+    setNotes((prev) => ({ ...prev, [subject]: text }));
+  }, []);
+
+  const getSubjectNote = useCallback(
+    (subject: string) => notes[subject] || "",
+    [notes]
+  );
+
+  return { subjects: INITIAL_SUBJECT_NOTES, getSubjectNote, setSubjectNote };
 }
 
 export function formatTime(seconds: number): string {

@@ -1,29 +1,18 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, X, FileText } from "lucide-react";
+import type { SubjectNoteMeta } from "@/lib/store";
 
-const SUBJECTS = [
-  { name: "Legislacao de Transito", questions: 30 },
-  { name: "Lingua Portuguesa", questions: 20 },
-  { name: "Raciocinio Logico-Matematico", questions: 8 },
-  { name: "Informatica", questions: 7 },
-  { name: "Fisica", questions: 6 },
-  { name: "Direito Administrativo", questions: 5 },
-  { name: "Direito Constitucional", questions: 5 },
-  { name: "Direito Penal", questions: 6 },
-  { name: "Direito Processual Penal", questions: 4 },
-  { name: "Direitos Humanos", questions: 5 },
-  { name: "Legislacao Especial", questions: 2 },
-  { name: "Etica", questions: 4 },
-  { name: "Geopolitica", questions: 5 },
-  { name: "Ingles", questions: 8 },
-  { name: "Redacao", questions: 0 },
-];
+interface NotesSectionProps {
+  subjects: SubjectNoteMeta[];
+  getSubjectNote: (subject: string) => string;
+  setSubjectNote: (subject: string, text: string) => void;
+}
 
-const NotesSection = () => {
-  const [selected, setSelected] = useState<(typeof SUBJECTS)[0] | null>(null);
+const NotesSection = ({ subjects, getSubjectNote, setSubjectNote }: NotesSectionProps) => {
+  const [selected, setSelected] = useState<SubjectNoteMeta | null>(null);
 
-  const totalQuestions = SUBJECTS.reduce((a, s) => a + s.questions, 0);
+  const totalQuestions = subjects.reduce((a, s) => a + s.questions, 0);
 
   return (
     <section className="py-16 px-4">
@@ -40,12 +29,12 @@ const NotesSection = () => {
             Anotacoes: Materias
           </h2>
           <p className="text-muted-foreground text-sm font-body mt-1">
-            {SUBJECTS.length} disciplinas | {totalQuestions} questoes totais
+            {subjects.length} disciplinas | {totalQuestions} questoes totais
           </p>
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {SUBJECTS.map((subject, i) => (
+          {subjects.map((subject, i) => (
             <motion.button
               key={subject.name}
               onClick={() => setSelected(subject)}
@@ -105,10 +94,12 @@ const NotesSection = () => {
                   </button>
                 </div>
                 <div className="bg-secondary rounded-xl p-4">
-                  <p className="text-muted-foreground text-sm font-body">
-                    Area reservada para anotacoes sobre {selected.name}.
-                    Adicione links, resumos e materiais de estudo aqui.
-                  </p>
+                  <textarea
+                    value={getSubjectNote(selected.name)}
+                    onChange={(e) => setSubjectNote(selected.name, e.target.value)}
+                    placeholder={`Escreva suas anotacoes sobre ${selected.name} aqui...`}
+                    className="w-full h-40 bg-transparent text-muted-foreground text-sm font-body resize-none outline-none placeholder:text-muted-foreground"
+                  />
                 </div>
               </motion.div>
             </motion.div>

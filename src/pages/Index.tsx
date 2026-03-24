@@ -16,11 +16,15 @@ import {
   useWeeklyGoal,
   useDailyNotes,
   useSubjectReviews,
+  useSubjectNotes,
   useStopwatch,
   useDailyPlannedOverride,
   useWeeklyPlannedOverride,
 } from "@/lib/store";
 import { Crosshair } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 import prf1 from "@/assets/prf-1.jpeg";
 import prf3 from "@/assets/prf-3.png";
@@ -28,6 +32,8 @@ import prf4 from "@/assets/prf-4.png";
 import prf5 from "@/assets/prf-5.png";
 
 const Index = () => {
+  const { logout, user } = useAuth();
+  const { toast } = useToast();
   const { days, toggleTask, updateTask, deleteTask, addTask, moveTask, rescheduleTask } =
     useWeeklyData();
   const {
@@ -43,6 +49,7 @@ const Index = () => {
   const { goalHours, setGoalHours } = useWeeklyGoal();
   const { getNote, setNote } = useDailyNotes();
   const { reviews, markReviewed, removeReview } = useSubjectReviews();
+  const { subjects, getSubjectNote, setSubjectNote } = useSubjectNotes();
   const stopwatch = useStopwatch();
   const { setOverride, getOverride } = useDailyPlannedOverride();
   const { weeklyPlannedOverride, setWeeklyPlannedOverride } = useWeeklyPlannedOverride();
@@ -69,6 +76,18 @@ const Index = () => {
     }
   }, [stopwatch.displaySeconds, addSession, stopwatch.reset]);
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Falha ao sair",
+        description: "Nao foi possivel encerrar a sessao agora.",
+      });
+    }
+  }, [logout, toast]);
+
   return (
     <>
       <FocusMode
@@ -84,6 +103,16 @@ const Index = () => {
       />
 
       <main className="min-h-screen bg-background text-foreground">
+        <div className="fixed left-4 top-4 z-50 flex items-center gap-3 rounded-2xl border border-border/60 bg-card/90 px-4 py-3 shadow-card backdrop-blur">
+          <div className="hidden sm:block">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Autenticado</p>
+            <p className="max-w-[180px] truncate text-sm font-medium">{user?.email}</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleLogout}>
+            Sair
+          </Button>
+        </div>
+
         {/* Focus mode FAB */}
         <button
           onClick={() => setFocusMode(true)}
@@ -117,7 +146,11 @@ const Index = () => {
 
         <ThematicImage src={prf1} alt="PRF Tatico" />
 
-        <NotesSection />
+        <NotesSection
+          subjects={subjects}
+          getSubjectNote={getSubjectNote}
+          setSubjectNote={setSubjectNote}
+        />
 
         <ThematicImage src={prf4} alt="PRF COEsp" />
 

@@ -71,3 +71,35 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Firebase persistence
+
+This project can persist study data to Firebase Firestore (in addition to localStorage fallback).
+
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env` and fill Firebase web config values.
+3. In Firebase Console, create a Firestore database.
+4. Start the app and data will sync using document `app_data/main`.
+
+> Note: current sync uses a single shared document. For per-user isolation, the next step is enabling Firebase Auth and scoping by `uid`.
+
+## Firebase Hosting
+
+This repo is configured for Firebase Hosting on project `missao-prfestacio`.
+
+1. Build the app with `npm run build`.
+2. Log in to Firebase CLI with `firebase login`.
+3. Deploy Hosting with `npm run firebase:deploy:prod`.
+
+Local helpers included in this repo:
+
+- `dev-local.cmd`: runs Vite dev server using the bundled local Node runtime.
+- `preview-local.cmd`: runs Vite preview using the bundled local Node runtime.
+- `firebase-local.cmd login`: opens Firebase CLI login using the bundled local Node runtime.
+- `firebase-local.cmd deploy --only hosting`: deploys Hosting using the bundled local Node runtime.
+
+Hosting config details:
+
+- build output: `dist`
+- SPA rewrite: all routes serve `/index.html`
+- Firebase project alias: `missao-prfestacio`
