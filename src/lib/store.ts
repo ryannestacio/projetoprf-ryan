@@ -285,13 +285,13 @@ export function useStudySessions() {
     }
   }, [cloudHydrated, sessions]);
 
-  const addSession = useCallback((durationSeconds: number) => {
+  const addSession = useCallback((durationSeconds: number, createdAt: string = new Date().toISOString()) => {
     setSessions((prev) => [
       ...prev,
       {
         id: generateId(),
         durationSeconds,
-        createdAt: new Date().toISOString(),
+        createdAt,
       },
     ]);
   }, []);
@@ -381,6 +381,9 @@ export function useStopwatch() {
   const [startedAt, setStartedAt] = useState<number | null>(() => {
     try { return JSON.parse(localStorage.getItem("prf-sw-startedAt") || "null"); } catch { return null; }
   });
+  const [sessionAnchorAt, setSessionAnchorAt] = useState<number | null>(() => {
+    try { return JSON.parse(localStorage.getItem("prf-sw-sessionAnchorAt") || "null"); } catch { return null; }
+  });
 
   const running = startedAt !== null;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -391,6 +394,7 @@ export function useStopwatch() {
 
   const accumulatedHydrated = useCloudHydration<number>("prf-sw-accumulated", setAccumulated);
   const startedAtHydrated = useCloudHydration<number | null>("prf-sw-startedAt", setStartedAt);
+  const sessionAnchorAtHydrated = useCloudHydration<number | null>("prf-sw-sessionAnchorAt", setSessionAnchorAt);
 
   useEffect(() => {
     localStorage.setItem("prf-sw-accumulated", JSON.stringify(accumulated));
@@ -404,6 +408,12 @@ export function useStopwatch() {
       void saveCloudValue("prf-sw-startedAt", startedAt);
     }
   }, [startedAt, startedAtHydrated]);
+  useEffect(() => {
+    localStorage.setItem("prf-sw-sessionAnchorAt", JSON.stringify(sessionAnchorAt));
+    if (sessionAnchorAtHydrated) {
+      void saveCloudValue("prf-sw-sessionAnchorAt", sessionAnchorAt);
+    }
+  }, [sessionAnchorAt, sessionAnchorAtHydrated]);
 
   useEffect(() => {
     if (running) {
@@ -416,7 +426,17 @@ export function useStopwatch() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [running, accumulated, startedAt]);
 
-  const start = useCallback(() => setStartedAt(Date.now()), []);
+  useEffect(() => {
+    if (sessionAnchorAt === null && startedAt !== null) {
+      setSessionAnchorAt(startedAt);
+    }
+  }, [sessionAnchorAt, startedAt]);
+
+  const start = useCallback(() => {
+    const now = Date.now();
+    setStartedAt(now);
+    setSessionAnchorAt((anchor) => anchor ?? now);
+  }, []);
   const pause = useCallback(() => {
     if (startedAt) setAccumulated((a) => a + Math.floor((Date.now() - startedAt) / 1000));
     setStartedAt(null);
@@ -424,9 +444,10 @@ export function useStopwatch() {
   const reset = useCallback(() => {
     setStartedAt(null);
     setAccumulated(0);
+    setSessionAnchorAt(null);
   }, []);
 
-  return { displaySeconds, running, start, pause, reset };
+  return { displaySeconds, running, start, pause, reset, sessionAnchorAt };
 }
 
 export function useDailyPlannedOverride() {

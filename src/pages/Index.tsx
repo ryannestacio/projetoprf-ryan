@@ -63,18 +63,24 @@ const Index = () => {
 
   const handleComplete = useCallback(() => {
     if (stopwatch.displaySeconds > 0) {
-      addSession(stopwatch.displaySeconds);
+      const createdAt = stopwatch.sessionAnchorAt
+        ? new Date(stopwatch.sessionAnchorAt).toISOString()
+        : new Date().toISOString();
+      addSession(stopwatch.displaySeconds, createdAt);
       stopwatch.reset();
     }
-  }, [stopwatch.displaySeconds, addSession, stopwatch.reset]);
+  }, [stopwatch.displaySeconds, stopwatch.sessionAnchorAt, addSession, stopwatch.reset]);
 
   const handleCompleteFocus = useCallback(() => {
     if (stopwatch.displaySeconds > 0) {
-      addSession(stopwatch.displaySeconds);
+      const createdAt = stopwatch.sessionAnchorAt
+        ? new Date(stopwatch.sessionAnchorAt).toISOString()
+        : new Date().toISOString();
+      addSession(stopwatch.displaySeconds, createdAt);
       stopwatch.reset();
       setFocusMode(false);
     }
-  }, [stopwatch.displaySeconds, addSession, stopwatch.reset]);
+  }, [stopwatch.displaySeconds, stopwatch.sessionAnchorAt, addSession, stopwatch.reset]);
 
   const handleLogout = useCallback(async () => {
     try {

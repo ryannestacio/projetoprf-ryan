@@ -13,6 +13,7 @@ const RESOURCE_MAP = {
   "prf-daily-notes": "daily_notes",
   "prf-sw-accumulated": "stopwatch_accumulated",
   "prf-sw-startedAt": "stopwatch_started_at",
+  "prf-sw-sessionAnchorAt": "stopwatch_session_anchor_at",
   "prf-daily-planned-override": "daily_planned_overrides",
   "prf-weekly-planned-override": "weekly_planned_override",
   "prf-subject-reviews": "subject_reviews",
