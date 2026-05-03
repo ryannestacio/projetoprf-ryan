@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import prfLogo from "@/assets/prf-logo.jpeg";
 
 const HeroSection = () => {
@@ -39,12 +40,20 @@ const HeroSection = () => {
           Painel de Controle Tatico. Cronograma semanal, checklist e horas liquidas para sua jornada PRF.
         </p>
         
-        <a
-          href="#cronometro"
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform shadow-gold"
-        >
-          INICIAR OPERACAO
-        </a>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <a
+            href="#cronometro"
+            className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-display font-bold px-6 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform shadow-gold"
+          >
+            INICIAR OPERACAO
+          </a>
+          <Link
+            to="/cadernodeerros"
+            className="inline-flex items-center gap-2 bg-secondary text-foreground font-display font-bold px-6 py-3 rounded-lg hover:scale-[1.03] active:scale-[0.98] transition-transform hover:bg-secondary/80"
+          >
+            CADERNO DE ERROS
+          </Link>
+        </div>
       </motion.div>
     </section>
   );

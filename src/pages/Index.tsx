@@ -3,20 +3,17 @@ import HeroSection from "@/components/HeroSection";
 import Stopwatch from "@/components/Stopwatch";
 import WeeklyPlanner from "@/components/WeeklyPlanner";
 import ThematicImage from "@/components/ThematicImage";
-import NotesSection from "@/components/NotesSection";
+
 import DashboardSection from "@/components/DashboardSection";
 import PrayerSection from "@/components/PrayerSection";
 import FocusMode from "@/components/FocusMode";
-import DailyObservations from "@/components/DailyObservations";
+
 import PerformancePanel from "@/components/PerformancePanel";
-import SubjectReviewSection from "@/components/SubjectReviewSection";
+
 import {
   useWeeklyData,
   useStudySessions,
   useWeeklyGoal,
-  useDailyNotes,
-  useSubjectReviews,
-  useSubjectNotes,
   useStopwatch,
   useDailyPlannedOverride,
   useWeeklyPlannedOverride,
@@ -47,9 +44,6 @@ const Index = () => {
     weekSessionCount,
   } = useStudySessions();
   const { goalHours, setGoalHours } = useWeeklyGoal();
-  const { getNote, setNote } = useDailyNotes();
-  const { reviews, markReviewed, removeReview } = useSubjectReviews();
-  const { subjects, getSubjectNote, setSubjectNote } = useSubjectNotes();
   const stopwatch = useStopwatch();
   const { setOverride, getOverride } = useDailyPlannedOverride();
   const { weeklyPlannedOverride, setWeeklyPlannedOverride } = useWeeklyPlannedOverride();
@@ -152,18 +146,11 @@ const Index = () => {
 
         <ThematicImage src={prf1} alt="PRF Tatico" />
 
-        <NotesSection
-          subjects={subjects}
-          getSubjectNote={getSubjectNote}
-          setSubjectNote={setSubjectNote}
-        />
-
         <ThematicImage src={prf4} alt="PRF COEsp" />
 
-        {/* Observations + Performance */}
+        {/* Performance */}
         <section className="py-16 px-4">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-            <DailyObservations getNote={getNote} setNote={setNote} />
+          <div className="max-w-6xl mx-auto">
             <PerformancePanel
               days={days}
               sessions={sessions}
@@ -188,8 +175,6 @@ const Index = () => {
         />
 
         <ThematicImage src={prf5} alt="PRF Helicoptero" />
-
-        <SubjectReviewSection reviews={reviews} onMarkReviewed={markReviewed} onRemoveReview={removeReview} />
 
         <PrayerSection />
 
