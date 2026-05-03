@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BarChart3,
@@ -41,6 +41,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/lib/auth";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
 type StatusRevisao = "Pendente" | "Revisada" | "Com dúvida";
 
@@ -76,8 +79,17 @@ interface ErrorFormState {
   statusRevisao: StatusRevisao;
 }
 
+interface CadernoErrosDoc {
+  version?: number;
+  materias?: unknown;
+  erros?: unknown;
+}
+
 const MATERIAS_STORAGE_KEY = "caderno-erros-materias";
 const ERROS_STORAGE_KEY = "caderno-erros-itens";
+const CADERNO_ERROS_DOC_VERSION = 1;
+const CADERNO_ERROS_DOC_ID = "main";
+const CADERNO_ERROS_SAVE_DEBOUNCE_MS = 700;
 const REVIEW_STATUSES: StatusRevisao[] = ["Pendente", "Revisada", "Com dúvida"];
 const PIE_COLORS = ["#f97316", "#06b6d4", "#22c55e", "#f43f5e", "#a855f7"];
 const ENUNCIADO_PREVIEW_LIMIT = 230;
@@ -103,6 +115,120 @@ const isStatusRevisao = (value: string): value is StatusRevisao => {
   return REVIEW_STATUSES.includes(value as StatusRevisao);
 };
 
+const normalizeMateria = (raw: Partial<Materia>, index: number): Materia => ({
+  id: typeof raw.id === "string" && raw.id.trim() ? raw.id : `materia-${Date.now()}-${index}`,
+  nome: typeof raw.nome === "string" ? raw.nome.trim() : "",
+  dataCriacao:
+    typeof raw.dataCriacao === "string" && raw.dataCriacao.trim()
+      ? raw.dataCriacao
+      : new Date().toLocaleDateString("pt-BR"),
+});
+
+const normalizeErro = (raw: Partial<Erro>, index: number): Erro => {
+  const statusRaw = typeof raw.statusRevisao === "string" ? raw.statusRevisao : "Pendente";
+  const status = isStatusRevisao(statusRaw) ? statusRaw : "Pendente";
+
+  return {
+    id: typeof raw.id === "string" && raw.id.trim() ? raw.id : `erro-${Date.now()}-${index}`,
+    link: typeof raw.link === "string" ? raw.link : "",
+    materia: typeof raw.materia === "string" ? raw.materia : "",
+    banca: typeof raw.banca === "string" ? raw.banca : "",
+    assunto: typeof raw.assunto === "string" ? raw.assunto : "",
+    enunciado: typeof raw.enunciado === "string" ? raw.enunciado : "",
+    gabarito: typeof raw.gabarito === "string" ? raw.gabarito : "",
+    tipoErro: typeof raw.tipoErro === "string" ? raw.tipoErro : "",
+    porQueErrei: typeof raw.porQueErrei === "string" ? raw.porQueErrei : "",
+    statusRevisao: status,
+    date: typeof raw.date === "string" && raw.date.trim() ? raw.date : new Date().toLocaleDateString("pt-BR"),
+  };
+};
+
+const parseMaterias = (raw: unknown): Materia[] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw
+    .map((item, index) => normalizeMateria((item ?? {}) as Partial<Materia>, index))
+    .filter((materia) => materia.nome);
+};
+
+const parseErros = (raw: unknown): Erro[] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw.map((item, index) => normalizeErro((item ?? {}) as Partial<Erro>, index));
+};
+
+const mergeMaterias = (cloudMaterias: Materia[], localMaterias: Materia[]): Materia[] => {
+  const entries = [...cloudMaterias, ...localMaterias];
+  const map = new Map<string, Materia>();
+
+  entries.forEach((materia, index) => {
+    const fallbackKey = materia.nome.trim().toLocaleLowerCase("pt-BR");
+    const key = materia.id || fallbackKey || `materia-${index}`;
+    if (!map.has(key)) {
+      map.set(key, normalizeMateria(materia, index));
+      return;
+    }
+
+    // Keep the first copy, but complete missing fields from subsequent copies.
+    const current = map.get(key)!;
+    map.set(key, {
+      ...current,
+      nome: current.nome || materia.nome,
+      dataCriacao: current.dataCriacao || materia.dataCriacao,
+    });
+  });
+
+  return [...map.values()].filter((materia) => materia.nome);
+};
+
+const mergeErros = (cloudErros: Erro[], localErros: Erro[]): Erro[] => {
+  const map = new Map<string, Erro>();
+  [...cloudErros, ...localErros].forEach((erro, index) => {
+    const key = erro.id || `erro-${index}`;
+    if (!map.has(key)) {
+      map.set(key, normalizeErro(erro, index));
+    }
+  });
+  return [...map.values()];
+};
+
+const readLocalMaterias = (storageKey = MATERIAS_STORAGE_KEY): Materia[] => {
+  const savedMaterias = localStorage.getItem(storageKey);
+  if (!savedMaterias) {
+    return [];
+  }
+
+  try {
+    return parseMaterias(JSON.parse(savedMaterias));
+  } catch {
+    localStorage.removeItem(storageKey);
+    return [];
+  }
+};
+
+const readLocalErros = (storageKey = ERROS_STORAGE_KEY): Erro[] => {
+  const savedErros = localStorage.getItem(storageKey);
+  if (!savedErros) {
+    return [];
+  }
+
+  try {
+    return parseErros(JSON.parse(savedErros));
+  } catch {
+    localStorage.removeItem(storageKey);
+    return [];
+  }
+};
+
+const writeLocalSnapshot = (uid: string, materias: Materia[], erros: Erro[]) => {
+  localStorage.setItem(`${MATERIAS_STORAGE_KEY}:${uid}`, JSON.stringify(materias));
+  localStorage.setItem(`${ERROS_STORAGE_KEY}:${uid}`, JSON.stringify(erros));
+};
+
 const getStatusIcon = (status: StatusRevisao) => {
   if (status === "Revisada") {
     return CheckCircle2;
@@ -116,8 +242,10 @@ const getStatusIcon = (status: StatusRevisao) => {
 };
 
 const CadernoDeErros = () => {
+  const { user } = useAuth();
   const [erros, setErros] = useState<Erro[]>([]);
   const [materias, setMaterias] = useState<Materia[]>([]);
+  const [cloudHydrated, setCloudHydrated] = useState(false);
   const [tab, setTab] = useState<"questoes" | "dashboard">("questoes");
   const [selectedSubject, setSelectedSubject] = useState("todos");
   const [selectedErrorType, setSelectedErrorType] = useState("todos");
@@ -130,6 +258,8 @@ const CadernoDeErros = () => {
   const [editReasonDraft, setEditReasonDraft] = useState("");
   const [reasonEditable, setReasonEditable] = useState(false);
   const [formData, setFormData] = useState<ErrorFormState>(getEmptyFormData());
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedUserRef = useRef<string | null>(null);
 
   const errorTypes = [
     "Falta de atenção",
@@ -141,61 +271,137 @@ const CadernoDeErros = () => {
   const bancas = ["CEBRASPE", "FGV", "VUNESP", "CONSULPLAN", "CESPE", "Outras"];
 
   useEffect(() => {
-    const savedMaterias = localStorage.getItem(MATERIAS_STORAGE_KEY);
-    if (savedMaterias) {
-      try {
-        const parsed = JSON.parse(savedMaterias) as Materia[];
-        if (Array.isArray(parsed)) {
-          setMaterias(parsed);
-        }
-      } catch {
-        localStorage.removeItem(MATERIAS_STORAGE_KEY);
-      }
-    }
-
-    const savedErros = localStorage.getItem(ERROS_STORAGE_KEY);
-    if (!savedErros) {
+    if (!user?.uid) {
+      setCloudHydrated(false);
+      setMaterias([]);
+      setErros([]);
+      hydratedUserRef.current = null;
       return;
     }
 
-    try {
-      const parsed = JSON.parse(savedErros) as Array<Partial<Erro>>;
-      if (!Array.isArray(parsed)) {
-        return;
+    hydratedUserRef.current = null;
+    let mounted = true;
+
+    const hydrateFromCloud = async () => {
+      const scopedMateriasKey = `${MATERIAS_STORAGE_KEY}:${user.uid}`;
+      const scopedErrosKey = `${ERROS_STORAGE_KEY}:${user.uid}`;
+      const scopedLocalMaterias = readLocalMaterias(scopedMateriasKey);
+      const scopedLocalErros = readLocalErros(scopedErrosKey);
+      const hasScopedLocal = scopedLocalMaterias.length > 0 || scopedLocalErros.length > 0;
+      const legacyLocalMaterias = hasScopedLocal ? [] : readLocalMaterias();
+      const legacyLocalErros = hasScopedLocal ? [] : readLocalErros();
+      const localMaterias = hasScopedLocal ? scopedLocalMaterias : legacyLocalMaterias;
+      const localErros = hasScopedLocal ? scopedLocalErros : legacyLocalErros;
+      const cadernoRef = doc(db, "users", user.uid, "caderno_de_erros", CADERNO_ERROS_DOC_ID);
+
+      try {
+        const snapshot = await getDoc(cadernoRef);
+        if (!mounted) return;
+
+        if (!snapshot.exists()) {
+          const payload = {
+            version: CADERNO_ERROS_DOC_VERSION,
+            materias: localMaterias,
+            erros: localErros,
+            migratedFromLocalAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          };
+          await setDoc(cadernoRef, payload, { merge: true });
+          setMaterias(localMaterias);
+          setErros(localErros);
+          writeLocalSnapshot(user.uid, localMaterias, localErros);
+          if (!hasScopedLocal && (legacyLocalMaterias.length > 0 || legacyLocalErros.length > 0)) {
+            localStorage.removeItem(MATERIAS_STORAGE_KEY);
+            localStorage.removeItem(ERROS_STORAGE_KEY);
+          }
+          return;
+        }
+
+        const data = snapshot.data() as CadernoErrosDoc;
+        const cloudMaterias = parseMaterias(data.materias);
+        const cloudErros = parseErros(data.erros);
+        const mergedMaterias = mergeMaterias(cloudMaterias, localMaterias);
+        const mergedErros = mergeErros(cloudErros, localErros);
+
+        setMaterias(mergedMaterias);
+        setErros(mergedErros);
+        writeLocalSnapshot(user.uid, mergedMaterias, mergedErros);
+        if (!hasScopedLocal && (legacyLocalMaterias.length > 0 || legacyLocalErros.length > 0)) {
+          localStorage.removeItem(MATERIAS_STORAGE_KEY);
+          localStorage.removeItem(ERROS_STORAGE_KEY);
+        }
+
+        const changedComparedToCloud =
+          mergedMaterias.length !== cloudMaterias.length || mergedErros.length !== cloudErros.length;
+
+        if (changedComparedToCloud) {
+          await setDoc(
+            cadernoRef,
+            {
+              version: CADERNO_ERROS_DOC_VERSION,
+              materias: mergedMaterias,
+              erros: mergedErros,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+      } catch {
+        // Fallback seguro: mantém dados locais se cloud estiver indisponível.
+        setMaterias(localMaterias);
+        setErros(localErros);
+        writeLocalSnapshot(user.uid, localMaterias, localErros);
+      } finally {
+        if (mounted) {
+          hydratedUserRef.current = user.uid;
+          setCloudHydrated(true);
+        }
       }
+    };
 
-      const normalizedErros = parsed.map((item, index) => {
-        const statusRaw = typeof item.statusRevisao === "string" ? item.statusRevisao : "Pendente";
-        const status = isStatusRevisao(statusRaw) ? statusRaw : "Pendente";
+    void hydrateFromCloud();
 
-        return {
-          id: typeof item.id === "string" ? item.id : `legacy-${Date.now()}-${index}`,
-          link: typeof item.link === "string" ? item.link : "",
-          materia: typeof item.materia === "string" ? item.materia : "",
-          banca: typeof item.banca === "string" ? item.banca : "",
-          assunto: typeof item.assunto === "string" ? item.assunto : "",
-          enunciado: typeof item.enunciado === "string" ? item.enunciado : "",
-          gabarito: typeof item.gabarito === "string" ? item.gabarito : "",
-          tipoErro: typeof item.tipoErro === "string" ? item.tipoErro : "",
-          porQueErrei: typeof item.porQueErrei === "string" ? item.porQueErrei : "",
-          statusRevisao: status,
-          date: typeof item.date === "string" ? item.date : new Date().toLocaleDateString("pt-BR"),
-        } satisfies Erro;
-      });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.uid]);
 
-      setErros(normalizedErros);
-    } catch {
-      localStorage.removeItem(ERROS_STORAGE_KEY);
+  useEffect(() => {
+    if (!user?.uid) {
+      return;
     }
-  }, []);
+    writeLocalSnapshot(user.uid, materias, erros);
+  }, [erros, materias, user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem(MATERIAS_STORAGE_KEY, JSON.stringify(materias));
-  }, [materias]);
+    if (!user?.uid || !cloudHydrated || hydratedUserRef.current !== user.uid) {
+      return;
+    }
 
-  useEffect(() => {
-    localStorage.setItem(ERROS_STORAGE_KEY, JSON.stringify(erros));
-  }, [erros]);
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const cadernoRef = doc(db, "users", user.uid, "caderno_de_erros", CADERNO_ERROS_DOC_ID);
+      void setDoc(
+        cadernoRef,
+        {
+          version: CADERNO_ERROS_DOC_VERSION,
+          materias,
+          erros,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }, CADERNO_ERROS_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [cloudHydrated, erros, materias, user?.uid]);
 
   const subjects = useMemo(() => materias.map((materia) => materia.nome), [materias]);
 
@@ -1123,5 +1329,6 @@ const CadernoDeErros = () => {
 };
 
 export default CadernoDeErros;
+
 
 

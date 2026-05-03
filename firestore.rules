@@ -1,8 +1,41 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Caderno de erros agora é isolado por usuário.
+    match /users/{userId}/caderno_de_erros/{docId} {
+      allow read, write: if isOwner(userId) && docId == "main";
+    }
+
+    // Compatibilidade com coleções legadas já usadas pelo app.
+    match /{collection}/{docId} {
+      allow read, write: if isSignedIn()
+        && docId == "main"
+        && collection in [
+          "weekly_data",
+          "study_sessions",
+          "weekly_goal",
+          "daily_notes",
+          "stopwatch_accumulated",
+          "stopwatch_started_at",
+          "stopwatch_session_anchor_at",
+          "daily_planned_overrides",
+          "weekly_planned_override",
+          "subject_reviews",
+          "subject_notes",
+          "app_data"
+        ];
+    }
+
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }
