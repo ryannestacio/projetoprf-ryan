@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, ProtectedRoute, PublicOnlyRoute } from "@/lib/auth";
 import Index from "./pages/Index.tsx";
 import Login from "./pages/Login.tsx";
+import CadernoDeErros from "./pages/CadernoDeErros.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,14 @@ const App = () => (
                 <PublicOnlyRoute>
                   <Login />
                 </PublicOnlyRoute>
+              }
+            />
+            <Route
+              path="/cadernodeerros"
+              element={
+                <ProtectedRoute>
+                  <CadernoDeErros />
+                </ProtectedRoute>
               }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
